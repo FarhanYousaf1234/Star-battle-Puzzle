@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Puzzle Star Battle</title>
+<style>
+/* Basic styles */
+body {
+  font-family: Arial, sans-serif;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+table, th, td {
+  border: 1px solid black;
+}
+
+.cell {
+  width: 50px;
+  height: 50px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.star {
+  background-color: black;
+  border-radius: 50%;
+}
+
+.cross {
+  color: red;
+}
+
+.vertical-line {
+    border-left: 2px solid black;
+}
+
+.horizontal-line {
+    border-top: 2px solid black;
+}
+</style>
+</head>
+<body>
+<table id="game-board">
+  <!-- Game board will be dynamically generated here -->
+</table>
+<button id="check-result">Check Result</button>
+<div id="result"></div>
+
+<script>
+class Cell {
+    constructor(star, cross) {
+        this.star = star;
+        this.cross = cross;
+    }
+}
+
+class Board {
+    constructor(size, stars = 1) {
+        this.size = size;
+        this.stars = stars;
+        this.board = this.generateBoard();
+    }
+
+    generateBoard() {
+        const board = [];
+        for (let i = 0; i < this.size; i++) {
+            board.push([]);
+            for (let j = 0; j < this.size; j++) {
+                board[i].push(new Cell(false, false));
+            }
+        }
+        return board;
+    }
+
+    checkWin() {
+        // Check rows and columns for stars
+        for (let i = 0; i < this.size; i++) {
+            let rowCount = 0;
+            let colCount = 0;
+            for (let j = 0; j < this.size; j++) {
+                if (this.board[i][j].star) rowCount++;
+                if (this.board[j][i].star) colCount++;
+            }
+            if (rowCount === this.stars || colCount === this.stars) return true;
+        }
+
+        // Check diagonals for stars
+        let diagonal1Count = 0;
+        let diagonal2Count = 0;
+        for (let i = 0; i < this.size; i++) {
+            if (this.board[i][i].star) diagonal1Count++;
+            if (this.board[i][this.size - 1 - i].star) diagonal2Count++;
+        }
+        if (diagonal1Count === this.stars || diagonal2Count === this.stars) return true;
+
+        return false;
+    }
+}
+
+function toggleStar(cell) {
+    cell.classList.toggle('star');
+    toggleCross(cell);
+}
+
+function toggleCross(cell) {
+    const row = parseInt(cell.dataset.row);
+    const col = parseInt(cell.dataset.col);
+    
+    // Toggle cross in the clicked cell
+    cell.classList.toggle('cross');
+
+    // Toggle crosses in adjacent cells
+    const gameBoard = document.getElementById('game-board');
+    const rows = gameBoard.getElementsByTagName('tr');
+    const totalRows = rows.length;
+    const totalCols = rows[0].getElementsByTagName('td').length;
+
+    const directions = [
+        { dx: 0, dy: -1 },  // Up
+        { dx: 0, dy: 1 },   // Down
+        { dx: -1, dy: 0 },  // Left
+        { dx: 1, dy: 0 },   // Right
+        { dx: -1, dy: -1 }, // Diagonal: Up-Left
+        { dx: 1, dy: -1 },  // Diagonal: Up-Right
+        { dx: -1, dy: 1 },  // Diagonal: Down-Left
+        { dx: 1, dy: 1 }    // Diagonal: Down-Right
+    ];
+
+    directions.forEach(direction => {
+        const newRow = row + direction.dy;
+        const newCol = col + direction.dx;
+        if (newRow >= 0 && newRow < totalRows && newCol >= 0 && newCol < totalCols) {
+            const adjacentCell = rows[newRow].getElementsByTagName('td')[newCol];
+            if (adjacentCell.innerHTML.trim() === 'X') {
+                adjacentCell.innerHTML = ''; // Clear existing content
+            } else {
+                adjacentCell.innerHTML = 'X';
+            }
+        }
+    });
+}
+function divideGridRandomly() {
+    const gameBoard = document.getElementById('game-board');
+    const rows = gameBoard.getElementsByTagName('tr');
+
+    const totalRows = rows.length;
+    const totalCols = rows[0].getElementsByTagName('td').length;
+
+    // Randomly generate vertical lines
+    for (let i = 1; i < totalCols; i++) {
+        if (Math.random() < 0.5) {
+            for (let r = 0; r < totalRows; r++) {
+                const row = rows[r];
+                const cellsInRow = row.getElementsByTagName('td');
+                cellsInRow[i - 1].classList.add('vertical-line');
+            }
+        }
+    }
+
+    // Randomly generate horizontal lines
+    for (let i = 1; i < totalRows; i++) {
+        if (Math.random() < 0.5) {
+            const row = rows[i - 1];
+            const cellsInRow = row.getElementsByTagName('td');
+            for (let c = 0; c < totalCols; c++) {
+                cellsInRow[c].classList.add('horizontal-line');
+            }
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const gameBoard = document.getElementById('game-board');
+    const size = 8; // Change the size of the board here
+    const stars = 1; // Change the number of stars per row/column here
+
+    board = new Board(size, stars);
+
+    // Create the game board table
+    for (let i = 0; i < size; i++) {
+        const row = document.createElement('tr');
+        for (let j = 0; j < size; j++) {
+            const cell = document.createElement('td');
+            cell.classList.add('cell');
+            cell.dataset.row = i;
+            cell.dataset.col = j;
+            cell.addEventListener('mousedown', function(event) {
+                if (event.button === 0) { // Left click
+                    toggleStar(cell);
+                } else if (event.button === 2) { // Right click
+                    event.preventDefault(); // Prevent right-click menu
+                    toggleCross(cell);
+                }
+            });
+            row.appendChild(cell);
+        }
+        gameBoard.appendChild(row);
+    }  
+
+    // Highlight random blocks
+    divideGridRandomly();
+
+    // Add event listener to the check result button
+    const checkResultButton = document.getElementById('check-result');
+    checkResultButton.addEventListener('click', function() {
+        if (board.checkWin()) {
+            document.getElementById('result').textContent = 'You win!';
+        } else {
+            document.getElementById('result').textContent = 'You lose!';
+        }
+    });
+});
+</script>
+</body>
+</html>
